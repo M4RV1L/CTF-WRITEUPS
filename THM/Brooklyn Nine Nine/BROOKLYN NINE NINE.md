@@ -1,124 +1,170 @@
-Partiamo con la fase di enumerazione delle porte  salvando i risultato in file di nome scan
+# BROOKLYN NINE NINE
+![](screen/img.png)
+
+
+Let's start with the port enumeration phase, saving the results in a file named scan.
 `nmap -p- --open -sS -min-rate 5000 -vvv -n -Pn 10.10.195.47 -oG scan`
-![[Screenshot 2025-08-11 alle 10.32.55.png]]
+
+![](screen/nmap-scan.png)
+
+Here's what we found
+
+![](screen/results-namp-scan.png)
+
+Let's do a detailed scan of the ports and save the result in a file named ports
+
+`nmap -p21,22,80 -sCV 10.10.195.47 -oN ports`
+
+![](screen/nmap-ports.png)
 
 
-Ecco cosa abbiamo trovato
-![[Screenshot 2025-08-11 alle 10.33.32.png]]
+Here's what he found
 
-Facciamo una scansione dettagliata delle porte salvando il risultato su in file di nome ports
-`nmap -sCV 10.10.195.47 -oN ports`
-![[Screenshot 2025-08-11 alle 10.34.01.png]]
+![](screen/results-nmap-ports.png)
 
+We see that port 21 allows anonymous login without a password, and we also found a file called *note_to_jake.txt* in the port.
+Port 22 requires credentials to log in, so we'll skip it for now.
+Port 80 runs http service, so a web finger.
 
-Ecco cosa ha trovato questo
-![[Screenshot 2025-08-11 alle 10.34.23.png]]
+Let's start with port 80.
+Then open the browser and paste the machine's IP address.
 
-Vediamo che la porta 21 permette di loggarsi un maniera anonima senza password, inoltre ci ha trovato un file "note_to_jake.txt" nella porta.
-Per la porta 22 per entrare servono le credenziali, quindi per ora la saltiamo.
-Sulla porta 80 corre in servizio http quindi un dito web.
+![](screen/site.png)
 
-Iniziamo con la porta 80. 
-Quindi apriamo il browser e incolliamo l'IP della macchina
-![[Screenshot 2025-08-11 alle 10.35.00.png]]
-
-Nel sito non sembra esserci niente. 
-Vediamo se ha dei sottodomini con gobuster.
+There doesn't seem to be anything on the site.
+Let's see if it has any subdomains with gobuster.
 
 `gobuster dir -u http://10.10.195.47 -w /usr/share/wordlists/dirbuster/directory-list-1.0.txt`
-![[Screenshot 2025-08-11 alle 10.36.02.png]]
+
+![](screen/gobuster.png)
 
 
-Non ci troverà niente. Inutile perdere tempo.
-![[Screenshot 2025-08-11 alle 10.36.21.png]]
+You won't find anything here. Don't waste your time.
 
-Torniamo sul sito e analizziamo il codice sorgente ctrl+u
-![[Screenshot 2025-08-11 alle 10.36.42.png]]
-Abbiamo trovato un commento che fa riferimento alla steganografia.
+![](screen/results-gobuster.png)
 
-Quindi facciamo una ispect sulla pagina web per trovare il nome dell'immagine.
-![[Screenshot 2025-08-11 alle 10.37.10.png]]
+Let's go back to the website and analyze the source code ctrl+u
 
-Trovata!!
-Usiamo wget per prendere l'immagine.
+![](screen/code-site.png)
+
+We found a comment that refers to steganography.
+
+So let's inspect the web page to find the name of the image.
+
+![](screen/name-img-site.png)
+
+Found it!
+Let's use wget to grab the image.
+
 `wget 10.10.195.47/brooklyn99`
-![[Screenshot 2025-08-11 alle 10.39.27.png]]
 
+![](screen/wget-img.png)
 
-Usiamo steghide per trovare informazione dentro l'immagine.
-`steghide extract -sf brooklyn99
-![[Screenshot 2025-08-11 alle 10.39.42.png]]
+We use steghide to find information within the image.
 
+`steghide extract -sf brooklyn99`
 
-Niente da fare ci chiede la password 
-![[Screenshot 2025-08-11 alle 10.40.02.png]]
-Usiamo stegcracker molto utile in queste situazioni
+![](screen/steghide.png)
+
+No luck, it asks us for the password. 
+
+![](screen/steghide-psswd.png)
+
+We use stegcracker, which is very useful in these situations.
+
 `stegcracker brooklyn99 /home/marcovillano/Downloads/rockyou.txt`
-![[Screenshot 2025-08-11 alle 10.40.44.png]]
 
+![](screen/stegcracker.png)
 
-Password trovata!!
-![[Screenshot 2025-08-11 alle 10.41.08.png]]
+Password found!
 
-Ritorniamo a steghide e mettiamo la password 
-![[Screenshot 2025-08-11 alle 10.41.23.png]]
-Ci ha estratto il file "note.txt", vediamo cosa c'è dentro.
-![[Screenshot 2025-08-11 alle 10.41.46.png]]
+![](screen/stegceacker-results.png)
 
-Un nome user e la sua password. Potrebbero essere utili per la porta 22.
-Ma prima entriamo nella porta 21
-![[Screenshot 2025-08-11 alle 10.42.22.png]]
-Siamo dentro.
-Facciamo ls per vedere se ci sono file.
-![[Screenshot 2025-08-11 alle 10.42.53.png]]
-C'è il file "note_to_jake.txt". Prendiamolo con get.
-Vediamo cosa c'è dentro il file
-![[Screenshot 2025-08-11 alle 10.44.24.png]]
-Ci dice che la password di Jake è debole possiamo provare a usare hydra.
+Let's go back to steghide and enter the password. 
+
+![](screen/steghide-passwd-2.png)
+
+It extracted the file “note.txt.” Let's see what's inside.
+
+![](screen/cat-note.png)
+
+A user name and password. They may be useful for port 22.
+But first, let's enter port 21.
+
+![](screen/ftp.png)
+
+We're in.
+Let's do ls to see if there are any files.
+
+![](screen/note-to-jake.png)
+
+There is a file called “note_to_jake.txt”. Let's get it with get.
+Let's see what's inside the file.
+
+![](screen/cat-note-to-jake.png)
+
+It tells us that Jake's password is weak, so we can try using hydra.
 
 `hydra -l jake -P /home/marcovillano/Downloads/rockyou.txt`
-![[Screenshot 2025-08-11 alle 10.44.46.png]]
 
+![](screen/hydra.png)
 
-Trovata 
-![[Screenshot 2025-08-11 alle 10.45.08.png]]
+Found!! 
 
-Ora entriamo.
-Proviamo prima con Jake
+![](screen/results-hydra.png)
+
+Now let's go in.
+Let's try Jake first.
+
 `ssh jake@10.10.195.47`
-![[Screenshot 2025-08-11 alle 10.46.46.png]]
 
-Perfetto siamo dentro.
-![[Screenshot 2025-08-11 alle 10.47.40.png]]
+![](screen/ssh.png)
 
-Entriamo dento holt
-![[Screenshot 2025-08-11 alle 10.48.13.png]]
-Prima flag trovata!!
-![[Screenshot 2025-08-11 alle 10.48.13.png]]
-Ora cerchiamo la flag root.
-Dobbiamo scalare i privilegi.
-Facciamo un find con / per partire dalla radice -perm per i permessi -4000, mandiamo stderr 2>/dev/null
+Perfect, we're in.
+
+![](screen/jake.png)
+
+Let's go inside Holt.
+First flag found!
+
+![](screen/user-flag.png)
+
+Now let's look for the root flag.
+We need to escalate privileges.
+
 `find / -perm -4000 2>/dev/null`
-![[Screenshot 2025-08-11 alle 10.48.41.png]]
-Ok ha trovato qualcosa
-![[Screenshot 2025-08-11 alle 10.48.58.png]]
 
-Ora usiamo un sito molto utile per la scalata dei privilegi GTFOBins.
-Su questo sito possiamo fare un controllo sui binari che ci sono usciti.
-Facciamo un `sudo -l`
-![[Screenshot 2025-08-11 alle 10.49.27.png]]
-Ci dice che il binario less c'è qualcosa.
-Allora cerchiamolo su GTFOBins.
-![[Screenshot 2025-08-11 alle 10.50.04.png]]
+![](screen/find.png)
 
-Ci dice che ha un sudo
-![[Screenshot 2025-08-11 alle 10.50.24.png]]
-Ci dice di fare `sudo less /etc/profile` e dargli `!/bin/sh`
-![[Screenshot 2025-08-11 alle 10.50.47.png]]
-![[Screenshot 2025-08-11 alle 10.51.11.png]]
+Okay, he found something.
 
+![](screen/results-find.png)
 
-Facciamolo e saremo root.
-![[Screenshot 2025-08-11 alle 10.51.27.png]]
-Facciamo un cd /root per trovare la flag di root
-![[Screenshot 2025-08-11 alle 10.51.51.png]]
+Now let's use a very useful website for GTFOBins privilege escalation.
+On this website, we can check the binaries that have been released.
+Let's do a `sudo -l`
+
+![](screen/sudo-l.png)
+
+It tells us that there is something in the binary.
+So let's look for it on GTFOBins.
+
+![](screen/gtfobins-less.png)
+
+He tells us he has a sudo
+
+![](screen/gtfobins-sudo.png)
+
+It tells us to do `sudo less /etc/profile` and give him `!/bin/sh`
+
+![](screen/sudo-less.png)
+
+![](screen/results-sudo-less.png)
+
+Let's do it and we'll be root.
+
+![](screen/root.png)
+
+Let's make a cd /root to find the root flag.
+
+![](screen/root-flag.png)
